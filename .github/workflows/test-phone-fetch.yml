@@ -16,4 +16,6 @@ jobs:
           node-version: "20"
 
       - name: Run phone fetch test
+        env:
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
         run: node test-phone-fetch.js
