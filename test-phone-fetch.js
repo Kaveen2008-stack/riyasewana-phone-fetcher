@@ -1,8 +1,11 @@
 /**
  * Standalone test - NOT connected to Supabase yet.
- * Just proves whether GitHub Actions' outbound IP can fetch a riyasewana
- * ad detail page (Cloudflare Workers' IP got 429'd; this checks if
- * GitHub's IP range fares better).
+ * Fetches riyasewana ad pages THROUGH the r.jina.ai reader proxy instead
+ * of direct - riyasewana's Cloudflare bot-protection blocks direct
+ * requests from every cloud/datacenter IP range we tried (Cloudflare
+ * Workers, GitHub Actions runners) with a 403/429, but the proxy's IP
+ * isn't blocked, and it conveniently returns clean markdown instead of
+ * raw HTML.
  *
  * Run locally with:  node test-phone-fetch.js
  * Or via GitHub Actions (see .github/workflows/test-phone-fetch.yml)
@@ -12,14 +15,8 @@
 const TEST_URL = "https://riyasewana.com/buy/suzuki-wagon-r-sale-nittambuwa-12338434";
 
 async function fetchAdPhone(adUrl) {
-  const res = await fetch(adUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-      Referer: "https://riyasewana.com/search/cars",
-    },
-  });
+  const proxyUrl = "https://r.jina.ai/" + adUrl;
+  const res = await fetch(proxyUrl);
 
   console.log("Status:", res.status, res.statusText);
 
@@ -29,24 +26,23 @@ async function fetchAdPhone(adUrl) {
     throw new Error(`Fetch failed: ${res.status}`);
   }
 
-  const html = await res.text();
-  console.log("HTML length:", html.length);
+  const markdown = await res.text();
+  console.log("Markdown length:", markdown.length);
 
-  // Strategy 1: tel: link (what the CONTACT button uses)
-  const telMatch = html.match(/href="tel:([+\d\s\-]+)"/i);
-  if (telMatch) {
-    console.log("Found via tel: href ->", telMatch[1]);
-    return telMatch[1].replace(/[^\d]/g, "");
-  }
-
-  // Strategy 2: fallback - bare Sri Lankan number shape (0 + 9 digits)
-  const digitMatch = html.match(/\b(0\d[\d\s\-]{7,10}\d)\b/);
+  // r.jina.ai's markdown puts each field on its own line, e.g.
+  // "Contact\n\n077 595 3811" or similar - look for a Sri Lankan
+  // phone-number shape (0 + 9 digits, optionally spaced/hyphenated)
+  // anywhere in the text, since we don't yet know the exact label
+  // riyasewana uses next to the number.
+  const digitMatch = markdown.match(/\b(0\d{2}[\s\-]?\d{3}[\s\-]?\d{4})\b/);
   if (digitMatch) {
-    console.log("Found via digit-run fallback ->", digitMatch[1]);
+    console.log("Found phone ->", digitMatch[1]);
     return digitMatch[1].replace(/[^\d]/g, "");
   }
 
-  console.log("No phone number pattern found in HTML.");
+  console.log("No phone number pattern found in markdown.");
+  console.log("\n--- Full markdown (for manual inspection) ---\n");
+  console.log(markdown);
   return null;
 }
 
