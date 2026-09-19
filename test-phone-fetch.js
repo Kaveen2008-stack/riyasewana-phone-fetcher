@@ -46,21 +46,23 @@ function extractPhoneTokenAttrs(html) {
   return { vid: match[1], t: match[2], tk: match[3], vt: match[4] };
 }
 
-async function fetchPhoneDirect({ vid, t, tk, vt }) {
+async function fetchPhoneViaProxy({ vid, t, tk, vt }) {
   const apiUrl = `https://riyasewana.com/get-phone.php?vid=${vid}&t=${t}&tk=${tk}&vt=${vt}`;
-  console.log("[Direct API call]", apiUrl);
-  const res = await fetch(apiUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      Referer: `https://riyasewana.com/buy/x-${vid}`,
-    },
+  const proxyUrl = "https://r.jina.ai/" + apiUrl;
+  console.log("[Proxy API call]", proxyUrl);
+  const res = await fetch(proxyUrl, {
+    headers: { "X-Return-Format": "html" }, // we want the raw JSON body, not markdown-wrapped
   });
-  console.log("[Direct API call] Status:", res.status, res.statusText);
+  console.log("[Proxy API call] Status:", res.status, res.statusText);
   const body = await res.text();
-  console.log("[Direct API call] Body:", body.slice(0, 300));
-  if (!res.ok) throw new Error(`Direct API call failed: ${res.status}`);
-  return JSON.parse(body);
+  console.log("[Proxy API call] Body (first 500 chars):", body.slice(0, 500));
+  if (!res.ok) throw new Error(`Proxy API call failed: ${res.status}`);
+
+  // The proxy may wrap the JSON in whitespace/other text - try to locate
+  // and parse just the {...} portion.
+  const jsonMatch = body.match(/\{[^{}]*"phone"[^{}]*\}/);
+  if (!jsonMatch) throw new Error("Could not find JSON phone object in proxy response");
+  return JSON.parse(jsonMatch[0]);
 }
 
 (async () => {
@@ -81,8 +83,8 @@ async function fetchPhoneDirect({ vid, t, tk, vt }) {
     }
     console.log("Extracted:", attrs);
 
-    console.log("\n--- Step 3: call get-phone.php directly ---");
-    const result = await fetchPhoneDirect(attrs);
+    console.log("\n--- Step 3: call get-phone.php via proxy ---");
+    const result = await fetchPhoneViaProxy(attrs);
 
     console.log("\n=== RESULT ===");
     console.log("Phone:", result.phone);
