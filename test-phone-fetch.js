@@ -26,7 +26,7 @@ const TEST_URL = "https://riyasewana.com/buy/suzuki-wagon-r-sale-nittambuwa-1233
 async function fetchAdPageHtmlViaProxy(adUrl) {
   const proxyUrl = "https://r.jina.ai/" + adUrl;
   const res = await fetch(proxyUrl, {
-    headers: { "X-Respond-With": "text" }, // raw HTML, not markdown
+    headers: { "X-Return-Format": "html" }, // raw HTML, not markdown
   });
   console.log("[Proxy fetch] Status:", res.status, res.statusText);
   if (!res.ok) {
