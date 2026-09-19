@@ -26,7 +26,10 @@ const TEST_URL = "https://riyasewana.com/buy/suzuki-wagon-r-sale-nittambuwa-1233
 async function fetchAdPageHtmlViaProxy(adUrl) {
   const proxyUrl = "https://r.jina.ai/" + adUrl;
   const res = await fetch(proxyUrl, {
-    headers: { "X-Return-Format": "html" }, // raw HTML, not markdown
+    headers: {
+      "X-Return-Format": "html", // raw HTML, not markdown
+      "X-No-Cache": "true", // force a fresh render - a cached page has a stale/expired token
+    },
   });
   console.log("[Proxy fetch] Status:", res.status, res.statusText);
   if (!res.ok) {
@@ -51,7 +54,10 @@ async function fetchPhoneViaProxy({ vid, t, tk, vt }) {
   const proxyUrl = "https://r.jina.ai/" + apiUrl;
   console.log("[Proxy API call]", proxyUrl);
   const res = await fetch(proxyUrl, {
-    headers: { "X-Return-Format": "html" }, // we want the raw JSON body, not markdown-wrapped
+    headers: {
+      "X-Return-Format": "html", // we want the raw JSON body, not markdown-wrapped
+      "X-No-Cache": "true",
+    },
   });
   console.log("[Proxy API call] Status:", res.status, res.statusText);
   const body = await res.text();
