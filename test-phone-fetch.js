@@ -23,13 +23,24 @@
 
 const TEST_URL = "https://riyasewana.com/buy/suzuki-wagon-r-sale-nittambuwa-12338434";
 
+// Read from GitHub Actions secret (set as env var in the workflow file).
+// Falls back to no-key mode (20 RPM) if not set, so this still runs locally
+// without needing the key configured.
+const JINA_API_KEY = process.env.JINA_API_KEY || null;
+
+function jinaHeaders(extra = {}) {
+  const headers = { ...extra };
+  if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`;
+  return headers;
+}
+
 async function fetchAdPageHtmlViaProxy(adUrl) {
   const proxyUrl = "https://r.jina.ai/" + adUrl;
   const res = await fetch(proxyUrl, {
-    headers: {
+    headers: jinaHeaders({
       "X-Return-Format": "html", // raw HTML, not markdown
       "X-No-Cache": "true", // force a fresh render - a cached page has a stale/expired token
-    },
+    }),
   });
   console.log("[Proxy fetch] Status:", res.status, res.statusText);
   if (!res.ok) {
@@ -54,10 +65,10 @@ async function fetchPhoneViaProxy({ vid, t, tk, vt }) {
   const proxyUrl = "https://r.jina.ai/" + apiUrl;
   console.log("[Proxy API call]", proxyUrl);
   const res = await fetch(proxyUrl, {
-    headers: {
+    headers: jinaHeaders({
       "X-Return-Format": "html", // we want the raw JSON body, not markdown-wrapped
       "X-No-Cache": "true",
-    },
+    }),
   });
   console.log("[Proxy API call] Status:", res.status, res.statusText);
   const body = await res.text();
